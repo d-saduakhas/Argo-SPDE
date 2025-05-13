@@ -252,7 +252,7 @@ fit_model_new <- function(iGrid, modelType, presLevel) {
 }
 
 
-fit_cv <- function(GridID, modelType, presLevel) {
+fit_cv <- function(GridID, modelType, presLevel, N_gibbs, n_burnin, N_sim) {
   library(ngme2)
   # Perform cross-validation
   base_dir <- "Results"
@@ -285,15 +285,15 @@ fit_cv <- function(GridID, modelType, presLevel) {
   })
   start.time <- Sys.time()
 
-  cv <- cross_validation(result_new,
-    print = T,
-    type = "custom", test_idx = test_list, train_idx = train_list,
-    n_gibbs_samples = 200,
-    n_burnin = 200,
-    N = 2, parallel = T,
-    cores_layer1 = 7,
-    cores_layer2 = 1
-  )
+  cv <- cross_validation(result_new,  print = T, 
+                         parallel = T,
+                         type = "custom", test_idx = test_list, train_idx = train_list, 
+                         thining_gap = 0,
+                         n_gibbs_samples = N_gibbs,
+                         cores_layer1 = 7,
+                         cores_layer2 = 1,
+                         n_burnin = n_burnin,
+                         N_sim = N_sim)
 
   end.time <- Sys.time()
   time.taken.cv <- round(end.time - start.time, 2)
@@ -312,5 +312,5 @@ if (!interactive()) {
   presLevel <- as.numeric(args[3])
   # Execute the model
   fit_model_new(GridID, modelType, presLevel)
-  fit_cv(GridID, modelType, presLevel)
+  fit_cv(GridID, modelType, presLevel, 500, 0, 2)
 }
