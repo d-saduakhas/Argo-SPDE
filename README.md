@@ -51,18 +51,11 @@ List of plot functions (run in MATLAB)
 
 Data Snapshot used
 
-# Title : Profile directory file of the Argo Global Data Assembly Center
-
-# Description : The directory file describes all individual profile files of the argo GDAC ftp site.
-
-# Project : ARGO
-
-# Format version : 2.0
-
-# Date of update : 20230827072418
-
-# FTP root number 1 : <ftp://ftp.ifremer.fr/ifremer/argo/dac>
-
-# FTP root number 2 : <ftp://usgodae.org/pub/outgoing/argo/dac>
-
-# GDAC node : CORIOLIS
+Title : Profile directory file of the Argo Global Data Assembly Center
+Description : The directory file describes all individual profile files of the argo GDAC ftp site.
+Project : ARGO
+Format version : 2.0
+Date of update : 20230827072418
+FTP root number 1 : <ftp://ftp.ifremer.fr/ifremer/argo/dac>
+FTP root number 2 : <ftp://usgodae.org/pub/outgoing/argo/dac>
+GDAC node : CORIOLIS
