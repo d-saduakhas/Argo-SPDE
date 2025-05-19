@@ -10,14 +10,6 @@ This repository contains the reproducible code for ["**Incorporating Correlated 
 
 ## Pipeline
 
-**Data Pre-processing**
-
-0.  Fetching the data can be done with
-
-    Data folder has the Jupyter notebook to download the Argo data directly from the GADR repository and converts netCDF format to .mat files and cleans the data according to the quality control criteria described supplement file.
-
-1.  To fit the mean field using the RG Climatology method run
-
 **Model fitting**
 
 1.  To run Gaussian models use `Code/fit_argo_gauss.R` and for non-Gaussian models use `Code/fit_argo_nig.R`
@@ -49,13 +41,19 @@ List of plot functions (run in MATLAB)
 
     -   `plot_parameter.m` - plots the $\kappa,\sigma$ values for the all models and $nu, \mu$ for NIG models
 
-Data Snapshot used
+**Data Snapshot used**
 
 Title : Profile directory file of the Argo Global Data Assembly Center
+
 Description : The directory file describes all individual profile files of the argo GDAC ftp site.
+
 Project : ARGO
+
 Format version : 2.0
+
 Date of update : 20230827072418
+
 FTP root number 1 : <ftp://ftp.ifremer.fr/ifremer/argo/dac>
+
 FTP root number 2 : <ftp://usgodae.org/pub/outgoing/argo/dac>
 GDAC node : CORIOLIS
