@@ -80,7 +80,7 @@ simulate_gauss_cor <- function(n_obs_per_rep, n_replicate = 1, ngme_out = NULL, 
     group_per_rep <- c(rep("Psal", n_obs_per_rep / 2), rep("Temp", n_obs_per_rep / 2))
     idx_per_rep <- c(1:(n_obs_per_rep / 2), 1:(n_obs_per_rep / 2))
 
-    repl <- rep(replicate, 2) # !!!!!!!!!!!!!!
+    repl <- replicate
     true_model <- f(loc,
         model = "bv_matern_normal", rho = rho, sd1 = sigma[1], sd2 = sigma[2],
         sub_models = list(
@@ -112,15 +112,12 @@ simulate_gauss_cor <- function(n_obs_per_rep, n_replicate = 1, ngme_out = NULL, 
         control = control_f(numer_grad = TRUE), name = "spde"
     )
 
-
-    idx <- rep(idx_per_rep, times = n_replicate)
     group <- rep(group_per_rep, n_replicate)
     # repl <- rep(1:n_replicate, each = n_obs_per_rep)
 
     return(list(
         Y = Y, loc = loc, formula = formula, true_model = true_model,
-        group_per_rep = group_per_rep, idx = idx, rho = rho, group = group, repl = repl, mesh = mesh
-    ))
+        group_per_rep = group_per_rep, rho = rho, group = group, repl = repl, mesh = mesh))
 }
 
 simulate_nig_cor <- function(n_obs_per_rep, n_replicate = 1, ngme_out = NULL, mesh = NULL, loc = NULL, meas_noise = FALSE, replicate = NULL) {
@@ -137,7 +134,7 @@ simulate_nig_cor <- function(n_obs_per_rep, n_replicate = 1, ngme_out = NULL, me
     }
     group_per_rep <- c(rep("Psal", n_obs_per_rep / 2), rep("Temp", n_obs_per_rep / 2))
     idx_per_rep <- c(1:(n_obs_per_rep / 2), 1:(n_obs_per_rep / 2))
-    repl <- rep(replicate, 2) # !!!!!!!!!!!!!!
+    repl <- replicate
     true_model <- f(loc,
         model = "bv_matern_nig", rho = rho, theta = 0, sd1 = sigma[1], sd2 = sigma[2],
         sub_models = list(
@@ -176,14 +173,11 @@ simulate_nig_cor <- function(n_obs_per_rep, n_replicate = 1, ngme_out = NULL, me
         control = control_f(numer_grad = TRUE), name = "spde"
     )
 
-
-    idx <- rep(idx_per_rep, times = n_replicate)
     group <- rep(group_per_rep, n_replicate)
 
     return(list(
         Y = Y, loc = loc, formula = formula, true_model = true_model,
-        group_per_rep = group_per_rep, idx = idx, rho = rho, group = group, repl = repl, mesh = mesh
-    ))
+        group_per_rep = group_per_rep, rho = rho, group = group, repl = repl, mesh = mesh))
 }
 
 confidence.bands <- function(ngme_out, loc, mesh, n.iter, nSampleSize, gauss = FALSE, meas_noise = TRUE, repl = NULL) {
@@ -220,7 +214,6 @@ confidence.bands <- function(ngme_out, loc, mesh, n.iter, nSampleSize, gauss = F
         rho_e <- param$rho_e
         sigma_e <- c(param$sigma_e1, param$sigma_e2) # Order of the fields - Temp Psal
         kappa <- c(param$Kappa1, param$Kappa2)
-        idx <- sim$idx
         repl_full <- sim$repl
         group_per_rep <- sim$group_per_rep
         formula <- sim$formula
@@ -233,7 +226,6 @@ confidence.bands <- function(ngme_out, loc, mesh, n.iter, nSampleSize, gauss = F
             replicate = repl_full, group = group_per_rep,
             data = data.frame(Y = sim$Y, Long = loc[, 1], Lat = loc[, 2]),
             control_opt = control_opt(estimation = FALSE),
-            start = ngme_out,
             family = noise_normal(
                 theta_sigma = log(sigma_e),
                 rho = rho_e,
@@ -370,6 +362,7 @@ process_grid_model <- function(grid_id, model_type) {
     idx_year_cv <- which(data$Lat > predLatMin & data$Lat < predLatMax & data$Long > predLongMin & data$Long < predLongMax & data$group == "Psal")
     n_pred <- length(idx_year_cv) # number of points for 1 field to be predicted for all replicates
     coord.prd <- cbind(data$Long[idx_year_cv], data$Lat[idx_year_cv]) # locations of points for 1 field
+    coord.prd = rbind(coord.prd,coord.prd) # for two fields
     n <- n_pred
     obs_data <- data.frame(
         Salinity = data$data$Y[idx_year_cv],
@@ -382,8 +375,8 @@ process_grid_model <- function(grid_id, model_type) {
     bb <- pred.data$mean # opposite way given Salinity Temp
     res <- c(obs_data$Salinity, obs_data$Temperature) - bb # salinity,temperature
     mesh <- data$mesh
-    loc <- rbind(coord.prd, coord.prd)
-    repl <- data$repl[idx_year_cv] # for one field
+    loc <- coord.prd # for two fields
+    repl = c(data$repl[idx_year_cv],data$repl[idx_year_cv+data$n])d
 
     if (model_type == "nig_cor") {
         cb <- confidence.bands(ngme_out = result_new, loc = loc, mesh = data$mesh, n.iter = 20, nSampleSize = 1000, repl = repl)
@@ -419,7 +412,7 @@ process_grid_model <- function(grid_id, model_type) {
     # create_qq_plot(res_psal, Y_psal,  paste0(plot_name_prefix, "QQggplot.png"), "Gauss Cor Psal QQ Plot")
 }
 
-problematic_grids <- list() #
+problematic_grids <- list() 
 
 for (i in 6:390) {
     tryCatch(
