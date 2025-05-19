@@ -1,5 +1,3 @@
-# Last updated: 16-11-2024 13:47
-
 # Compute the QQ plots for the standardized marginal residuals of the bivariate models
 # *Only points that are within the grid are considered, no extensions, only the CV points are included!!
 # Functions:
