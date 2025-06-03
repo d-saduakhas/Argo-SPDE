@@ -46,3 +46,7 @@ for i = 1:length(pressureLevels)
 
 end
 
+%% RUN
+% plot_best_model_cv.m for the colormap of best models for each grid
+% write_table_best_cv.m to generate a LaTeX-ready table that counts the
+% number of the best models
