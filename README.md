@@ -13,7 +13,7 @@ This repository contains the reproducible code for ["**Incorporating Correlated 
 **Model fitting**
 
 1.  To run Gaussian models use `Code/fit_argo_gauss.R` and for non-Gaussian models use `Code/fit_argo_nig.R`
-    -   Assuming your run on HPC with SLURM scheduler, execute `script_generator_fit_argo.sh` to generate and automatically submit the jobs for all models for one GridID.
+    - Assuming your run on HPC with SLURM scheduler, execute `script_generator_fit_argo.sh` to generate and automatically submit the jobs for all models for one GridID.
 2.  To collect the results use `Code/collect_results.R`
 
 **Uncertainty Quantification**
@@ -29,17 +29,19 @@ This repository contains the reproducible code for ["**Incorporating Correlated 
 
 Simulation study
 
--   Use `simulation_study_gauss.R` and `simulation_study_nig.R` to replicate the simulation study shown in paper. If executed in parallel for different settings on the HPC, use `script_generator_simulation_gauss.sh` to automatically write and submit multiple jobs at once for all the simulation settings.
+- Use `simulation_study_gauss.R` and `simulation_study_nig.R` to replicate the simulation study shown in paper. If executed in parallel for different settings on the HPC, use `script_generator_simulation_gauss.sh` to automatically write and submit multiple jobs at once for all the simulation settings.
 
 List of plot functions (run in MATLAB)
 
--   `supplement_plots_generate.m` - the automatic script to generate alll the required plots for the supplement material. Has the following individual functions:
+- `supplement_plots_generate.m` - the automatic script to generate alll the required plots for the supplement material. Has the following individual functions:
 
-    -   `plot_correlation.m` - plots the Pearson correlation and $\rho_\varepsilon$
+  - `plot_correlation_common_cb.m` - plots the Pearson correlation
 
-    -   `plot_nu_new_colormap.m` - plots the $\nu$ values for the different models
+  - `plot_pair_nig_final.m` - plots the $\eta, \mu$ values for the different models
 
-    -   `plot_parameter.m` - plots the $\kappa,\sigma$ values for the all models and $nu, \mu$ for NIG models
+  - `plot_parameter.m` - plots the $\rho,\sigma,\kappa$ values for the all models
+
+  - `plot_rho_epsilon.m` - plots the $\rho_\varepsilon$
 
 **Data Snapshot used**
 

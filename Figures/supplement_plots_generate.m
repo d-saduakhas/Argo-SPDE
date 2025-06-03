@@ -3,8 +3,8 @@
 %
 % - `plot_correlation_common_cb` (process correlation)
 % - `plot_rho_epsilon` (nugget correlation)
-% - `plot_parameter_final` (Rho, Sigma, Kappa)
-% - `plot_pair_nig_final` (Mu and Nu pairs)
+% - `plot_parameter` (Rho, Sigma, Kappa)
+% - `plot_pair_nig` (Mu and Nu pairs)
 % Figures are saved in `Figures/<pressureLevel>/`.
 %
 % **Dependencies**: Plotting functions, `colorBrewer`, `redblue()`, data files.
