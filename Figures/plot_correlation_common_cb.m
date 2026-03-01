@@ -19,7 +19,7 @@ function plot_correlation_common_cb( ...
 %
 %   Output:
 %   A PNG figure is saved to outputDir/presLevel/ named after the pressure level
-%   (e.g., '300_correlation_combined.png'). The figure includes:
+%   (e.g., '10_correlation_combined.png'). The figure includes:
 %   * Four panels showing the correlation parameter for each of the four selected models.
 %   * Two "difference" panels: (Gaussian Correlated - Gaussian) and (NIG Correlated - NIG).
 %   * Two common colorbars: one for model correlation values and one for differences.
@@ -31,7 +31,7 @@ function plot_correlation_common_cb( ...
 %   * Relies on helper functions: `makeGrid` (which should be renamed to `makeGridParam`
 %     for consistency with other plotting functions), `drawWorld`, `addCoast`,
 %     and `biv_corr`. These helpers are typically placed in a common 'helpers' directory.
-%   * Data files: Reads 'main_results.csv' from `~/Documents/Results/<presLevel>/`
+%   * Data files: Reads 'final_main_results_<presLevel>.csv' from `~/Documents/Results/<presLevel>/`
 %     and 'grid_equal.mat' from `~/Documents/Results/Data/`.
 %--------------------------------------------------------------------%
 % 0. SETTINGS
@@ -40,14 +40,18 @@ addpath('~/Documents/Results/colorBrewer/');
 lat  = linspace(-90,  90,181);
 lon  = linspace( 20, 380,361);
 [latGrid,lonGrid] = meshgrid(lat,lon);
-fs   = 16;                                   % base font size
-cmapMod  = brewermap([],'YlOrBr');           % 4 model panels
-cmapDiff = redblue(17);  cmapDiff(9,:) = 1;  % 2 difference panels
+fs   = 16;     % base font size
+% % Note: 'cmapMod' is removed here. It will be created adaptively in Section 1.
+% cmapDiff = redblue(256);
+
+% ALTERNATIVE COLORMAP
+base_cmap  = flipud(brewermap([],'PuOr'));           % 4 model panels
+cmapDiff = flipud(brewermap(256, 'RdBu'));  % 2 difference panels
 
 %--------------------------------------------------------------------%
 % 1. LOAD THE FOUR MODEL GRIDS & GET LIMITS
 %--------------------------------------------------------------------%
-fn = ['~/Documents/Results/' num2str(presLevel) '/main_results.csv'];
+fn = ['~/Documents/Results/' num2str(presLevel) '/final_main_results_' num2str(presLevel) '.csv'];
 if ~isfile(fn), error('File not found: %s',fn); end
 T  = readtable(fn);
 load('~/Documents/Results/Data/grid_equal.mat','Grid');   % 404 boxes
@@ -60,15 +64,46 @@ nig       = varGrid{3}; nig_cor   = varGrid{4};
 diffG     = gauss_cor - gauss;
 diffN     = nig_cor   - nig;
 
-% --- Global Limits (Ensured) ---
-vals    = [gauss(:);gauss_cor(:);nig(:);nig_cor(:)];
-cLimMod = quantile(vals(~isnan(vals)),[.05 .95]);
-if isempty(cLimMod) || cLimMod(1) == cLimMod(2), cLimMod = [min(vals(~isnan(vals))), max(vals(~isnan(vals)))]; end
-if isempty(cLimMod) || cLimMod(1) == cLimMod(2), cLimMod = [0 1]; end
-dMax    = quantile(abs([diffG(:);diffN(:)]),0.95);
-if isnan(dMax) || dMax == 0, dMax = max(abs([diffG(:);diffN(:)])); end
+
+%--------------------------------------------------------------------%
+% --- 1. ADAPTIVE & ROBUST LIMITS (High Contrast) ---
+%--------------------------------------------------------------------%
+
+vals = [gauss(:); gauss_cor(:); nig(:); nig_cor(:)];
+
+robust_lims = quantile(vals(~isnan(vals)), [0.05 0.95]); 
+
+mid_idx = ceil(size(base_cmap,1)/2);
+
+if robust_lims(1) >= 0
+    % CASE A: Strictly Positive (300 dbar) -> White-to-Red
+    % Use [0, 90th_Percentile].
+    % This ensures 0 is White, but stretches the Red gradient 
+    % so you can see the difference between 0.6 and 0.8.
+    cLimMod = [0, robust_lims(2)];
+    cmapMod = base_cmap(mid_idx:end, :); 
+    fprintf('Detected POSITIVE data. Using White->Red (High Contrast).\n');
+
+elseif robust_lims(2) <= 0
+    % CASE B: Strictly Negative -> Blue-to-White
+    cLimMod = [robust_lims(1), 0];
+    cmapMod = base_cmap(1:mid_idx-1, :); 
+    fprintf('Detected NEGATIVE data. Using Blue->White scale.\n');
+
+else
+    % CASE C: Mixed Data -> Symmetric Red-Blue
+    abs_max = max(abs(robust_lims));
+    if abs_max == 0, abs_max = 1; end
+    cLimMod = [-abs_max, abs_max];
+    cmapMod = base_cmap; 
+    fprintf('Detected MIXED data. Using Symmetric Red-Blue scale.\n');
+end
+
+diff_vals = [diffG(:); diffN(:)];
+diff_lims = quantile(diff_vals(~isnan(diff_vals)), [0.05 0.95]);
+dMax = max(abs(diff_lims));
 if isnan(dMax) || dMax == 0, dMax = 1; end
-cLimDiff= [-dMax dMax];
+cLimDiff = [-dMax dMax];
 
 fprintf('Global Climits: [%.2f, %.2f]\n', cLimMod(1), cLimMod(2));
 fprintf('Global Diff Climits: [%.2f, %.2f]\n', cLimDiff(1), cLimDiff(2));
@@ -81,7 +116,7 @@ fig.Position(3) = 35;  fig.Position(4) = 13;
 
 % layout parameters
 numRows=2; numCols=3;
-left_margin  = 0.005; right_margin = 0.07; %More space on right for CB labels
+left_margin  = 0.005; right_margin = 0.07; 
 bottom_margin= 0;     top_margin  = 0;
 
 gap_c1_c2=0; gap_c2_c3=0.06; vert_space=0;
@@ -174,9 +209,14 @@ clim(ax(6), cLimDiff);
 outDir = fullfile(outputDir,num2str(presLevel));
 if ~exist(outDir,'dir'), mkdir(outDir); end
     fname = fullfile(outDir,sprintf('%d_correlation_combined.png',presLevel));
-    print(fig,'-dpng','-r330',fname);
-    fprintf('Figure saved to %s\n',fname);
+    % print(fig,'-dpng','-r330',fname);
+    % fprintf('Figure saved to %s\n',fname);
+    exportgraphics(fig, fname, 'Resolution', 300); 
+    fprintf('Figure saved to %s (via exportgraphics)\n', fname);
+
+
 end
+
 
 %=====================  helper: build one grid  ==========================%
 function G = makeGrid(T,mdl,latGrid,lonGrid,Grid)

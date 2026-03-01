@@ -1,10 +1,13 @@
 # **Incorporating Correlated Nugget Effects in Multivariate SPDE Models: An Application to Argo Ocean Data**
 
-This repository contains the reproducible code for ["**Incorporating Correlated Nugget Effects in Multivariate SPDE Models: An Application to Argo Ocean Data**"](arxiv.org)
+This repository contains the reproducible code for ["**Incorporating Correlated Nugget Effects in Multivariate SPDE Models: An Application to Argo Ocean Data**"](https://arxiv.org/pdf/2506.03042)
 
 ## **Requirements**
 
-1.  R 4.3.0 and above. The latest version of [ngme2 package](https://davidbolin.github.io/ngme2/)
+1.  R 4.3.0 and above. The 0.7.1 version of [ngme2 package](https://davidbolin.github.io/ngme2/). Install the exact version used in this paper with:
+    ```r
+    devtools::install_github("davidbolin/ngme2@97aa9c66eca04189b30833d47dc6e4f921b64791")
+    ```
 
 2.  We assume you submit the jobs to HPC with SLURM scheduler and provide the `script_generator` bash files for automatic writing and submission of jobs scripts. Though running the individual models does not require HPC.
 
@@ -12,9 +15,9 @@ This repository contains the reproducible code for ["**Incorporating Correlated 
 
 **Model fitting**
 
-1.  To run Gaussian models use `Code/fit_argo_gauss.R` and for non-Gaussian models use `Code/fit_argo_nig.R`
-    - Assuming your run on HPC with SLURM scheduler, execute `script_generator_fit_argo.sh` to generate and automatically submit the jobs for all models for one GridID.
-2.  To collect the results use `Code/collect_results.R`
+To run Gaussian models use `Code/fit_argo_gauss.R` and for non-Gaussian models use `Code/fit_argo_nig.R`
+
+- Assuming your run on HPC with SLURM scheduler, execute `script_generator_fit_argo.sh` to generate and automatically submit the jobs for all models for one GridID.
 
 **Uncertainty Quantification**
 
@@ -23,7 +26,13 @@ This repository contains the reproducible code for ["**Incorporating Correlated 
 
 **Results**
 
-1.  The results are available in the `Results` folder. They include the `main_results.csv` and the `cv_results.csv` files. The individual model fits are not included in the repository due to the total size of the files, they are available upon request.
+1.  The results are available in the `Results` folder, organized by pressure level (10 and 1000 dbar). Each folder contains:
+    - `final_main_results_{level}.csv` - main model fitting results
+    - `final_cv_{level}.csv` - leave-one-out cross-validation results
+    - `final_cv_loo_{level}.csv` - leave-one-float-out cross-validation results
+    - `final_cv_pdensity_{level}.csv` - potential density cross-validation results
+
+    The individual model fits are not included in the repository due to the total size of the files, they are available upon request.
 
 **Misc**
 
@@ -34,7 +43,6 @@ Simulation study
 List of plot functions (run in MATLAB)
 
 - `supplement_plots_generate.m` - the automatic script to generate alll the required plots for the supplement material. Has the following individual functions:
-
   - `plot_correlation_common_cb.m` - plots the Pearson correlation
 
   - `plot_pair_nig_final.m` - plots the $\eta, \mu$ values for the different models

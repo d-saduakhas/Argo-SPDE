@@ -24,50 +24,143 @@ create_mesh <- function(n_obs) {
     return(list(mesh = mesh, loc_2d_mesh = loc_2d_mesh))
 }
 
-# Function to simulate data
+## OLD version 
+# # Function to simulate data using version 0.6.0
+# simulate_data <- function(param, loc_2d_mesh, mesh, n_obs, n_rep) {
+#     group <- c(rep("Temp", n_rep * n_obs), rep("Psal", n_rep * n_obs))
+#     repl <- rep(rep(1:n_rep, each = n_obs), 2)
+#     Long <- rep(loc_2d_mesh[, 1], 2 * n_rep)
+#     Lat <- rep(loc_2d_mesh[, 2], 2 * n_rep)
+#     true_model <- f(
+#         ~ Long + Lat,
+#         mesh = mesh,
+#         group = group,
+#         replicate = repl,
+#         model = "bv_matern_nig",
+#         sd1 = param$sigma[1],
+#         sd2 = param$sigma[2],
+#         rho = param$rho,
+#         theta = param$theta,
+#         sub_models = list(
+#             Temp = list(model = "matern", theta_K = log(param$kappa[1])),
+#             Psal = list(model = "matern", theta_K = log(param$kappa[2]))
+#         ),
+#         noise = list(
+#             Temp = noise_nig(sigma = 1, mu = param$mu[1], nu = param$nu[1]),
+#             Psal = noise_nig(sigma = 1, mu = param$mu[2], nu = param$nu[2])
+#         ),
+#         control = control_f(numer_grad = TRUE),
+#         name = "spde",
+#         eval = TRUE
+#     )
+#     W <- simulate(true_model)[[1]]
+#     # Note we have to generate the random noise independently for each replicate
+#     sd_1 <- param$sigma_eps[1]
+#     sd_2 <- param$sigma_eps[2]
+#     rho_e <- param$rho_eps
+#     Cov_same_idx <- matrix(c(sd_1^2, rho_e * sd_1 * sd_2, rho_e * sd_1 * sd_2, sd_2^2), nrow = 2)
+#     Cov_measurement <- Cov_same_idx %x% diag(n_obs * n_rep)
+#     L <- t(chol(Cov_measurement))
+#     e <- L %*% rnorm(2 * n_obs * n_rep)
+#     Y <- W + as.numeric(e)
+#     data <- data.frame(
+#         Long = rep(loc_2d_mesh[, 1], 2 * n_rep),
+#         Lat = rep(loc_2d_mesh[, 2], 2 * n_rep),
+#         Y = Y
+#     )
+#     return(list(data = data, group = group, repl = repl, Y = Y))
+# }
+
+# NEW Version for ngme2 0.7.1
 simulate_data <- function(param, loc_2d_mesh, mesh, n_obs, n_rep) {
-    group <- c(rep("Temp", n_rep * n_obs), rep("Psal", n_rep * n_obs))
-    repl <- rep(rep(1:n_rep, each = n_obs), 2)
-    Long <- rep(loc_2d_mesh[, 1], 2 * n_rep)
-    Lat <- rep(loc_2d_mesh[, 2], 2 * n_rep)
-    true_model <- f(
-        ~ Long + Lat,
-        mesh = mesh,
-        group = group,
-        replicate = repl,
-        model = "bv_matern_nig",
-        sd1 = param$sigma[1],
-        sd2 = param$sigma[2],
-        rho = param$rho,
-        theta = param$theta,
-        sub_models = list(
-            Temp = list(model = "matern", theta_K = log(param$kappa[1])),
-            Psal = list(model = "matern", theta_K = log(param$kappa[2]))
-        ),
-        noise = list(
-            Temp = noise_nig(sigma = 1, mu = param$mu[1], nu = param$nu[1]),
-            Psal = noise_nig(sigma = 1, mu = param$mu[2], nu = param$nu[2])
-        ),
-        control = control_f(numer_grad = TRUE),
-        name = "spde",
-        eval = TRUE
+  # Simulate each replicate independently, then stack
+  W_all <- c()
+  
+  # Per-replicate group (no replicates dimension)
+  group_single <- c(rep("Temp", n_obs), rep("Psal", n_obs))
+  Long_single <- rep(loc_2d_mesh[, 1], 2)
+  Lat_single <- rep(loc_2d_mesh[, 2], 2)
+  loc_single <- cbind(Long_single, Lat_single)
+  
+  for (r in 1:n_rep) {
+    sim_model <- f(
+      loc_single,
+      mesh = mesh,
+      group = group_single,
+      model = "bv_matern_nig",  # or "bv_matern_normal" for Gaussian
+      sd1 = param$sigma[1],
+      sd2 = param$sigma[2],
+      rho = param$rho,
+      theta = param$theta,
+      sub_models = list(
+        Temp = list(model = "matern", theta_K = log(param$kappa[1])),
+        Psal = list(model = "matern", theta_K = log(param$kappa[2]))
+      ),
+      noise = list(
+        Temp = noise_nig(sigma = 1, mu = param$mu[1], nu = param$nu[1]),
+        Psal = noise_nig(sigma = 1, mu = param$mu[2], nu = param$nu[2])
+      ),
+      control = control_f(numer_grad = TRUE),
+      name = "spde",
+      eval = TRUE
     )
-    W <- simulate(true_model)[[1]]
-    # Note we have to generate the random noise independently for each replicate
-    sd_1 <- param$sigma_eps[1]
-    sd_2 <- param$sigma_eps[2]
-    rho_e <- param$rho_eps
-    Cov_same_idx <- matrix(c(sd_1^2, rho_e * sd_1 * sd_2, rho_e * sd_1 * sd_2, sd_2^2), nrow = 2)
-    Cov_measurement <- Cov_same_idx %x% diag(n_obs * n_rep)
-    L <- t(chol(Cov_measurement))
-    e <- L %*% rnorm(2 * n_obs * n_rep)
-    Y <- W + as.numeric(e)
-    data <- data.frame(
-        Long = rep(loc_2d_mesh[, 1], 2 * n_rep),
-        Lat = rep(loc_2d_mesh[, 2], 2 * n_rep),
-        Y = Y
-    )
-    return(list(data = data, group = group, repl = repl, Y = Y))
+    W_r <- simulate(sim_model)[[1]]
+    W_all <- c(W_all, W_r)
+  }
+  
+  # Now W_all has length 2 * n_obs * n_rep
+  # Structure: [Temp_rep1, Psal_rep1, Temp_rep2, Psal_rep2, ...]
+  # We need to reorganize to: [Temp_rep1, Temp_rep2, ..., Psal_rep1, Psal_rep2, ...]
+  # to match the group/repl structure
+  
+  # Extract per-replicate blocks and reorganize
+  W_temp <- c()
+  W_psal <- c()
+  for (r in 1:n_rep) {
+    start_idx <- (r - 1) * 2 * n_obs + 1
+    W_temp <- c(W_temp, W_all[start_idx:(start_idx + n_obs - 1)])
+    W_psal <- c(W_psal, W_all[(start_idx + n_obs):(start_idx + 2 * n_obs - 1)])
+  }
+  W_stacked <- c(W_temp, W_psal)
+  
+  # Build group and replicate vectors
+  group <- c(rep("Temp", n_rep * n_obs), rep("Psal", n_rep * n_obs))
+  repl <- rep(rep(1:n_rep, each = n_obs), 2)
+  
+  # Correlated measurement noise
+  sd_1 <- param$sigma_eps[1]
+  sd_2 <- param$sigma_eps[2]
+  rho_e <- param$rho_eps
+  Cov_same_idx <- matrix(c(sd_1^2, rho_e * sd_1 * sd_2, 
+                           rho_e * sd_1 * sd_2, sd_2^2), nrow = 2)
+  
+  # Generate noise per replicate (paired Temp/Psal at same location)
+  e_all <- c()
+  for (r in 1:n_rep) {
+    Cov_r <- Cov_same_idx %x% diag(n_obs)
+    L <- t(chol(Cov_r))
+    e_r <- L %*% rnorm(2 * n_obs)  # [temp_noise, psal_noise]
+    e_all <- c(e_all, as.numeric(e_r))
+  }
+  # e_all structure: [temp_r1, psal_r1, temp_r2, psal_r2, ...]
+  # Reorganize to match group structure
+  e_temp <- c()
+  e_psal <- c()
+  for (r in 1:n_rep) {
+    start_idx <- (r - 1) * 2 * n_obs + 1
+    e_temp <- c(e_temp, e_all[start_idx:(start_idx + n_obs - 1)])
+    e_psal <- c(e_psal, e_all[(start_idx + n_obs):(start_idx + 2 * n_obs - 1)])
+  }
+  e_stacked <- c(e_temp, e_psal)
+  
+  Y <- W_stacked + e_stacked
+  
+  data <- data.frame(
+    Long = rep(loc_2d_mesh[, 1], 2 * n_rep),
+    Lat = rep(loc_2d_mesh[, 2], 2 * n_rep),
+    Y = Y
+  )
+  return(list(data = data, group = group, repl = repl, Y = Y))
 }
 
 # Function to run ngme model

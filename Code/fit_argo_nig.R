@@ -1,124 +1,141 @@
+# Load libraries
+library(ngme2)
+library(R.matlab)
+library(fmesher)
+library(MASS)
+library(inlabru)
+library(readr)
+library(dplyr)
+
 load_and_prepare_data <- function(iGrid, presLevel) {
-    # Load libraries
-    library(R.matlab)
-    library(fmesher)
-    library(ngme2)
-    library(MASS)
-    library(inlabru)
-
-    # Load data
-    S <- readMat(paste0("Data/residual_", as.character(presLevel), "_01.mat"))
-    interpLatYear <- S$interpLat
-    interpLongYear <- S$interpLong
-    interpJulDayYear <- S$interpJulDay
-    interpTempYear <- S$differenceTemp
-    interpPsalYear <- S$differencePsal
-    # general conditions for the data
-    if (presLevel == 10) {
-        drop_id <- which(interpTempYear < -15 | interpTempYear > 10 | interpPsalYear < -4 | interpPsalYear > 4)
-        interpTempYear <- interpTempYear[-drop_id]
-        interpLatYear <- interpLatYear[-drop_id]
-        interpLongYear <- interpLongYear[-drop_id]
-        interpPsalYear <- interpPsalYear[-drop_id]
-        interpJulDayYear <- interpJulDayYear[-drop_id]
-    }
-    if (presLevel == 300) {
-        drop_id <- which(interpPsalYear < -5)
-        interpTempYear <- interpTempYear[-drop_id]
-        interpLatYear <- interpLatYear[-drop_id]
-        interpLongYear <- interpLongYear[-drop_id]
-        interpPsalYear <- interpPsalYear[-drop_id]
-        interpJulDayYear <- interpJulDayYear[-drop_id]
-    }
-    if (presLevel == 1000) {
-        drop_id <- which(interpPsalYear < -10 | interpTempYear < -10)
-        interpTempYear <- interpTempYear[-drop_id]
-        interpLatYear <- interpLatYear[-drop_id]
-        interpLongYear <- interpLongYear[-drop_id]
-        interpPsalYear <- interpPsalYear[-drop_id]
-        interpJulDayYear <- interpJulDayYear[-drop_id]
-    }
-    # Data preparation
-    month <- 1
-    startYear <- 2007
-    endYear <- 2020
-    nYear <- endYear - startYear + 1
-    n_rep <- nYear
-    grid_table_ext <- readMat("Data/grid_equal.mat")
-    Grid <- grid_table_ext$Grid
-    # Prediction Point of approximately 10x10 degrees, shifted by 20 degrees to match RG masked data
-    predLatMin <- Grid[iGrid, 1]
-    predLatMax <- Grid[iGrid, 2]
-    predLongMin <- Grid[iGrid, 3] + 20
-    predLongMax <- Grid[iGrid, 4] + 20
-
-    # The box of coordinates used for parameter estimation
-    windowSize <- 5
-    latMin <- predLatMin - windowSize
-    latMax <- predLatMax + windowSize
-    longMin <- predLongMin - windowSize
-    longMax <- predLongMax + windowSize
-
-    interpLatAggr <- vector("list", nYear)
-    interpLongAggr <- vector("list", nYear)
-    interpTempAggr <- vector("list", nYear)
-    interpPsalAggr <- vector("list", nYear)
-    idx_cv <- vector("list", nYear)
-    # Calculate the number of leap years between 0000 and 1970
-    leap_years <- sum((0:1969) %% 4 == 0) - sum((0:1969) %% 100 == 0) + sum((0:1969) %% 400 == 0)
-
-    # Calculate the total number of days between MATLAB's and R's reference dates
-    offset <- 1970 * 365 + leap_years
-    for (iYear in startYear:endYear) {
-        startJulDay <- as.numeric(as.Date(paste0(iYear, "-01-01"), format = "%Y-%m-%d")) + offset
-        endJulDay <- as.numeric(as.Date(paste0(iYear, "-12-31"), format = "%Y-%m-%d")) + offset
-
-        # Filter based on interpJulDay
-        idx <- which(interpLatYear > latMin & interpLatYear < latMax & interpLongYear > longMin & interpLongYear < longMax & interpJulDayYear >= startJulDay & interpJulDayYear <= endJulDay)
-
-        interpLatAggr[[iYear - startYear + 1]] <- interpLatYear[idx]
-        interpLongAggr[[iYear - startYear + 1]] <- interpLongYear[idx]
-        interpTempAggr[[iYear - startYear + 1]] <- interpTempYear[idx]
-        interpPsalAggr[[iYear - startYear + 1]] <- interpPsalYear[idx]
-
-        # idx for data inside the prediction box of 10 by 10 degrees - for cv later
-        idx_cv[[iYear - startYear + 1]] <- which(interpLatYear > predLatMin & interpLatYear < predLatMax & interpLongYear > predLongMin & interpLongYear < predLongMax & interpJulDayYear >= startJulDay & interpJulDayYear <= endJulDay)
-    }
-    n_pred <- sum(sapply(idx_cv, length))
-    n <- sum(sapply(interpTempAggr, length))
-    if (n_pred < 100) {
-        return(list(error = "Not Enough Data")) # not enough data
-    }
-
-    years_vector <- unlist(sapply(startYear:endYear, function(y) rep(y, length(interpLatAggr[[y - 2006]]))))
-
-    data <- data.frame(
-        Y = c(unlist(interpPsalAggr), unlist(interpTempAggr)), # ordered alphabetically
-        Long = rep(unlist(interpLongAggr), 2),
-        Lat = rep(unlist(interpLatAggr), 2),
-        Year = rep(years_vector, 2) - 2006
-    )
-    # Generate mesh with fmesher
-    max_edge <- 1
-    bnd <- spoly(data.frame(x = c(longMin, longMax, longMax, longMin), y = c(latMin, latMin, latMax, latMax)))
-    mesh <- fm_mesh_2d_inla(
-        boundary = bnd,
-        loc.domain = cbind(data$Long, data$Lat),
-        max.edge = c(1, 5) * max_edge,
-        cutoff = 0.1,
-        offset = c(0.1, -0.1),
-        min.angle = 20,
-        max.n.strict = c(3000, 300) # maximum precision
-    )
-    return(list(
-        data = data,
-        mesh = mesh,
-        predLong = c(predLongMin, predLongMax),
-        predLat = c(predLatMin, predLatMax),
-        group = c(rep("Psal", n), rep("Temp", n)),
-        repl = c(years_vector, years_vector),
-        n = n
-    ))
+  # Load data
+  S <- readMat(paste0("Data/residual_", as.character(presLevel), "_01.mat"))
+  interpLatYear <- S$interpLat              # Latitude of each Argo profile observation
+  interpLongYear <- S$interpLong            # Longitude of each observation (20.5–379.5 convention)
+  interpJulDayYear <- S$interpJulDay        # Julian day of each observation
+  interpFloatIDYear <- S$interpFloatID      # Argo float ID for each observation
+  interpTempYear <- S$differenceTemp        # Temperature residual (raw obs - estimated mean field)
+  interpPsalYear <- S$differencePsal        # Salinity residual (raw obs - estimated mean field)
+  rawTempYear <- S$interpTemp               # Raw temperature observation (before mean subtraction)
+  rawPsalYear <- S$interpPsal              # Raw salinity observation (before mean subtraction)
+  estimatedMeanTempYear <- S$estimatedMeanTemp  # Estimated mean field for temperature at each obs location/time 
+  estimatedMeanPsalYear <- S$estimatedMeanPsal  # Estimated mean field for salinity at each obs location/time 
+  # general conditions for the data
+  if (presLevel == 10) {
+    drop_id <- which(interpTempYear < -10 | interpTempYear > 10 | interpPsalYear < -10 | interpPsalYear > 7)
+    interpTempYear <- interpTempYear[-drop_id]
+    interpLatYear <- interpLatYear[-drop_id]
+    interpLongYear <- interpLongYear[-drop_id]
+    interpPsalYear <- interpPsalYear[-drop_id]
+    interpJulDayYear <- interpJulDayYear[-drop_id]
+  }
+  if (presLevel == 1000) {
+    drop_id <- which(interpPsalYear < -10 | interpTempYear < -10 | interpPsalYear < -3 | interpPsalYear > 3)
+    interpTempYear <- interpTempYear[-drop_id]
+    interpLatYear <- interpLatYear[-drop_id]
+    interpLongYear <- interpLongYear[-drop_id]
+    interpPsalYear <- interpPsalYear[-drop_id]
+    interpJulDayYear <- interpJulDayYear[-drop_id]
+  }
+  # Data preparation
+  month <- 1
+  startYear <- 2007
+  endYear <- 2020
+  nYear <- endYear - startYear + 1
+  n_rep <- nYear
+  grid_table_ext <- readMat("Data/grid_equal.mat")
+  Grid <- grid_table_ext$Grid
+  # Prediction Point of approximately 10x10 degrees, shifted by 20 degrees to match RG masked data
+  predLatMin <- Grid[iGrid, 1]
+  predLatMax <- Grid[iGrid, 2]
+  predLongMin <- Grid[iGrid, 3] + 20
+  predLongMax <- Grid[iGrid, 4] + 20
+  
+  # The box of coordinates used for parameter estimation
+  windowSize <- 5
+  latMin <- predLatMin - windowSize
+  latMax <- predLatMax + windowSize
+  longMin <- predLongMin - windowSize
+  longMax <- predLongMax + windowSize
+  
+  interpLatAggr <- vector("list", nYear)
+  interpLongAggr <- vector("list", nYear)
+  interpTempAggr <- vector("list", nYear)
+  interpPsalAggr <- vector("list", nYear)
+  interpFloatIDAggr <- vector("list", nYear)
+  rawTempAggr <- vector("list", nYear)
+  rawPsalAggr <- vector("list", nYear)
+  estimatedMeanTempAggr <- vector("list", nYear)
+  estimatedMeanPsalAggr <- vector("list", nYear)
+  idx_cv <- vector("list", nYear)
+  
+  # Julian day offset
+  leap_years <- sum((0:1969) %% 4 == 0) - sum((0:1969) %% 100 == 0) + sum((0:1969) %% 400 == 0)
+  offset <- 1970 * 365 + leap_years
+  
+  for (iYear in startYear:endYear) {
+    startJulDay <- as.numeric(as.Date(paste0(iYear, "-01-01"), format = "%Y-%m-%d")) + offset
+    endJulDay <- as.numeric(as.Date(paste0(iYear, "-12-31"), format = "%Y-%m-%d")) + offset
+    
+    idx <- which(interpLatYear > latMin & interpLatYear < latMax & 
+                   interpLongYear > longMin & interpLongYear < longMax & 
+                   interpJulDayYear >= startJulDay & interpJulDayYear <= endJulDay)
+    
+    interpLatAggr[[iYear - startYear + 1]] <- interpLatYear[idx]
+    interpLongAggr[[iYear - startYear + 1]] <- interpLongYear[idx]
+    interpTempAggr[[iYear - startYear + 1]] <- interpTempYear[idx]
+    interpPsalAggr[[iYear - startYear + 1]] <- interpPsalYear[idx]
+    interpFloatIDAggr[[iYear - startYear + 1]] <- interpFloatIDYear[idx]
+    rawTempAggr[[iYear - startYear + 1]] <- rawTempYear[idx]
+    rawPsalAggr[[iYear - startYear + 1]] <- rawPsalYear[idx]
+    estimatedMeanTempAggr[[iYear - startYear + 1]] <- estimatedMeanTempYear[idx]
+    estimatedMeanPsalAggr[[iYear - startYear + 1]] <- estimatedMeanPsalYear[idx]
+    
+    idx_cv[[iYear - startYear + 1]] <- which(interpLatYear > predLatMin & interpLatYear < predLatMax & 
+                                               interpLongYear > predLongMin & interpLongYear < predLongMax & 
+                                               interpJulDayYear >= startJulDay & interpJulDayYear <= endJulDay)
+  }
+  
+  n_pred <- sum(sapply(idx_cv, length))
+  n <- sum(sapply(interpTempAggr, length))
+  
+  if (n_pred < 100) {
+    return(list(error = "Not Enough Data"))
+  }
+  
+  years_vector <- unlist(sapply(startYear:endYear, function(y) rep(y, length(interpLatAggr[[y - 2006]]))))
+  
+  data <- data.frame(
+    Y = c(unlist(interpPsalAggr), unlist(interpTempAggr)),
+    Long = rep(unlist(interpLongAggr), 2),
+    Lat = rep(unlist(interpLatAggr), 2),
+    Year = rep(years_vector, 2) - 2006,
+    FloatID = rep(unlist(interpFloatIDAggr), 2),
+    rawObs = c(unlist(rawPsalAggr), unlist(rawTempAggr)),
+    estimatedMean = c(unlist(estimatedMeanPsalAggr), unlist(estimatedMeanTempAggr))
+  )
+  
+  # Generate mesh with fmesher
+  max_edge <- 1
+  bnd <- spoly(data.frame(x = c(longMin, longMax, longMax, longMin), y = c(latMin, latMin, latMax, latMax)))
+  mesh <- fm_mesh_2d_inla(
+    boundary = bnd,
+    loc.domain = cbind(data$Long, data$Lat),
+    max.edge = c(1, 5) * max_edge,
+    cutoff = 0.1,
+    offset = c(0.1, -0.1),
+    min.angle = 20,
+    max.n.strict = c(3000, 300) # maximum precision
+  )
+  return(list(
+    data = data, 
+    mesh = mesh,
+    predLong = c(predLongMin, predLongMax),
+    predLat = c(predLatMin, predLatMax),
+    group = c(rep("Psal", n), rep("Temp", n)),
+    repl = c(years_vector, years_vector),
+    n = n
+  ))
 }
 
 # Fit NIG independent model, i.e. independent measurement error
@@ -155,7 +172,7 @@ fit_nig_indep <- function(data, mesh, group, repl, n, n_opt, result_gauss = NULL
             verbose = F,
             print_check_info = T,
             max_num_threads = 28,
-            stop_points = 200,
+            stop_points = 400,
             std_lim = 0.1,
             trend_lim = 0.01,
             max_relative_step = 0.25,
@@ -203,7 +220,7 @@ fit_nig_cor <- function(data, mesh, group, repl, n, n_opt, result_gauss = NULL) 
             verbose = F,
             print_check_info = T,
             max_num_threads = 28,
-            stop_points = 200,
+            stop_points = 400,
             std_lim = 0.1,
             trend_lim = 0.01,
             max_relative_step = 0.25,
@@ -231,7 +248,7 @@ fit_model_new <- function(iGrid, modelType, presLevel) {
 
     if (!file.exists(save_filename)) {
         # n_opt structure: 1.burn-in samples 2.total iterations 3.number of chains 4. Gibbs samples per iteration
-        n_opt <- c(100, 10000, 2, 3)
+        n_opt <- c(100, 20000, 2, 3)
         start.time <- Sys.time()
         print(paste("New fit for iGrid:", iGrid, "modelType:", modelType, "pressure:", presLevel))
         data <- load_and_prepare_data(iGrid, presLevel)

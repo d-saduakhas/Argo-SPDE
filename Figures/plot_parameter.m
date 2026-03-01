@@ -20,7 +20,7 @@ function plot_parameter(presLevel,i_order,model,model_title,outputDir,paramName)
 %
 %   Output:
 %   A PNG figure is saved to outputDir/presLevel/ named after the pressure level
-%   and parameter (e.g., '300_Rho_combined.png'). The figure includes:
+%   and parameter (e.g., '10_Rho_combined.png'). The figure includes:
 %   * Four panels showing the chosen parameter for each of the four selected models.
 %   * Two "difference" panels: (Gaussian Correlated - Gaussian) and (NIG Correlated - NIG).
 %   * Two common colorbars: one for model parameters and one for differences.
@@ -31,7 +31,7 @@ function plot_parameter(presLevel,i_order,model,model_title,outputDir,paramName)
 %   * Relies on helper functions: `makeGridParam`, `drawWorld`, `addCoast`,
 %     and `latexLabel` (which are typically appended within this file or
 %     placed in a common 'helpers' directory).
-%   * Data files: Reads 'main_results.csv' from `~/Documents/Results/<presLevel>/`
+%   * Data files: Reads 'final_main_results_<presLevel>.csv' from `~/Documents/Results/<presLevel>/`
 %     and 'grid_equal.mat' from `~/Documents/Results/Data/`.
 %--------------------------------------------------------------------------%
 addpath('~/Documents/Results/colorBrewer/');
@@ -39,13 +39,14 @@ lat = linspace(-90,  90,181);
 lon = linspace( 20, 380,361);
 [latGrid,lonGrid] = meshgrid(lat,lon);
 fs  = 16;                                 % base font size
-cmapMod  = brewermap([],'YlOrBr');        % model panels
-cmapDiff = redblue(17); cmapDiff(9,:) = 1; % symmetric diff panels
+
+cmapMod  =  flipud(brewermap(256,'PuOr'));  %brewermap([],'YlOrBr');         % keep your model colormap
+cmapDiff = flipud(brewermap(256, 'RdBu'));
 
 %--------------------------------------------------------------------%
 % 1. Load data & build four grids (1:Gauss,2:Gauss_cor,3:NIG,4:NIG_cor)
 %--------------------------------------------------------------------%
-fn = sprintf('~/Documents/Results/%d/main_results.csv',presLevel);
+fn = ['~/Documents/Results/' num2str(presLevel) '/final_main_results_' num2str(presLevel) '.csv'];
 if ~isfile(fn); error('File not found: %s',fn); end
 T  = readtable(fn);
 load('~/Documents/Results/Data/grid_equal.mat','Grid');
@@ -65,15 +66,44 @@ diffN = nig_cor   - nig;    % NIG      correction – base
 vals    = [gauss(:);gauss_cor(:);nig(:);nig_cor(:)];
 vals    = vals(~isnan(vals));
 if isempty(vals), error('All values are NaN for %s at %d hPa',paramName,presLevel); end
-cLimMod = quantile(vals,[.05 .95]);
+cLimMod = quantile(vals,[.1 .9]);
 if diff(cLimMod)==0, cLimMod = [min(vals) max(vals)]; end
 if diff(cLimMod)==0, cLimMod = [0 1]; end  % final fallback
 
-dMax    = quantile(abs([diffG(:);diffN(:)]),0.9,'all');
-if isnan(dMax) || dMax==0, dMax = max(abs([diffG(:);diffN(:)])); end
-if dMax==0, dMax = 1; end
+% --- Adaptive limits for Rho (diverging colormap centered at 0) ---
+if strcmpi(paramName,'Rho')
+    mid_idx = ceil(size(cmapMod,1)/2);
+    if cLimMod(1) >= 0
+        cLimMod = [0, cLimMod(2)];
+        cmapMod = cmapMod(mid_idx:end, :);
+        fprintf('Detected POSITIVE data. Using White->Color (High Contrast).\n');
+    elseif cLimMod(2) <= 0
+        cLimMod = [cLimMod(1), 0];
+        cmapMod = cmapMod(1:mid_idx-1, :);
+        fprintf('Detected NEGATIVE data. Using Color->White scale.\n');
+    else
+        absMax = max(abs(cLimMod));
+        if absMax == 0, absMax = 1; end
+        cLimMod = [-absMax, absMax];
+        fprintf('Detected MIXED data. Using Symmetric scale.\n');
+    end
+    fprintf('Rho Climits: [%.4f, %.4f]\n', cLimMod(1), cLimMod(2));
+end
+
+fprintf('Global Climits: [%.4f, %.4f]\n', cLimMod(1), cLimMod(2));
+
+% dMax    = quantile(abs([diffG(:);diffN(:)]),0.9,'all');
+% if isnan(dMax) || dMax==0, dMax = max(abs([diffG(:);diffN(:)])); end
+% if dMax==0, dMax = 1; end
+% cLimDiff = [-dMax dMax];
+
+diff_vals = [diffG(:); diffN(:)];
+diff_lims = quantile(diff_vals(~isnan(diff_vals)), [0.1 0.9]);
+dMax = max(abs(diff_lims));
+if isnan(dMax) || dMax == 0, dMax = 1; end
 cLimDiff = [-dMax dMax];
 
+fprintf('Global Diff Climits: [%.4f, %.4f]\n', cLimDiff(1), cLimDiff(2));
 %--------------------------------------------------------------------%
 % 3. Build figure (manual axes positioning for full control)
 %--------------------------------------------------------------------%
@@ -155,8 +185,10 @@ set(ax([3 6]),'CLim',cLimDiff);
 %--------------------------------------------------------------------%
 outDir = fullfile(outputDir,num2str(presLevel)); if ~exist(outDir,'dir'); mkdir(outDir); end
 fname  = fullfile(outDir,sprintf('%d_%s_combined.png',presLevel,paramName));
-print(fig,'-dpng','-r330',fname);
-fprintf('Figure saved: %s\n',fname);
+% print(fig,'-dpng','-r330',fname);
+% fprintf('Figure saved: %s\n',fname);
+exportgraphics(fig, fname, 'Resolution', 300); 
+fprintf('Figure saved to %s (via exportgraphics)\n', fname);
 end
 
 %============================= HELPERS ==============================%
@@ -218,5 +250,3 @@ function lbl = latexLabel(p)
         otherwise,      lbl = p;
     end
 end
-
-

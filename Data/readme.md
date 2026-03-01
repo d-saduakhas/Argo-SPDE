@@ -1,27 +1,30 @@
-All the code used for fetching, pre-processing Argo profiles dataset.
+# Data
 
-This code can be used independently to scrape the data and convert it .mat files.
+Code for fetching and pre-processing the Argo profiles dataset. This code can be used independently to scrape the data and convert it to .mat files.
 
-Data_fetching_cleaning_org_git.ipynb - Python notebook, fully automatic (creates all the sub-folders for each year in hierarchical way) to download data from the GADR data repository directly
+## Pre-processing pipeline
 
-health_check_downloaded2.ipynb - execute to check if all files were downloaded correctly
+1. `Data_fetching_cleaning_org_git.ipynb` - Python notebook to automatically download data from the GDAC data repository (creates all sub-folders for each year in a hierarchical way)
 
-Merging_lower_upper_text.ipynb - gets the names of files where variables are either in lower or upper case, due to different encryption standards(pre-processing to merge them into one file later)
+2. `health_check_downloaded2.ipynb` - checks if all files were downloaded correctly
 
-preProcess.m - modified code from Kuusela et.al (2018), to clean and convert all netCDF files into .mat format
+3. `Merging_lower_upper_text.ipynb` - identifies files where variables are in lower or upper case due to different encoding standards (pre-processing to merge them into one file later)
 
-interpolateToPressureLevel.m - modified code from Kuusela et.al (2018) to interpolate the data from profiles to specified pressure level of interest.
+4. `preProcess.m` - modified code from Kuusela et al. (2018), cleans and converts all netCDF files into .mat format
 
-estimateMeanField.m - fit the local polynomial regression
+5. `interpolateToPressureLevel.m` - modified code from Kuusela et al. (2018), interpolates the data from profiles to a specified pressure level of interest
 
-subtractMeanField.m - subtract the mean field computed in the previous step
+6. `estimateMeanField.m` - fits the local polynomial regression
 
-Data/RG_climatology/RG_ArgoClim_Temperature_2019.nc - can be downloaded from
+7. `subtractMeanField.m` - subtracts the mean field computed in the previous step
 
-total interpolated profiles:
+## Climatology
 
-pressure level 10 - 1296996
+`RG_climatology/RG_ArgoClim_Temperature_2019.nc` - can be downloaded from the [Roemmich-Gilson Argo Climatology page](https://sio-argo.ucsd.edu/RG_Climatology.html)
 
-300 - 1349863
+## Total interpolated profiles
 
-1000 - 1182667
+| Pressure level (dbar) | Profiles  |
+|------------------------|-----------|
+| 10                     | 1,296,996 |
+| 1000                   | 1,182,667 |

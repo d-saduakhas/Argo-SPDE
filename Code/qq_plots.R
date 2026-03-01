@@ -323,14 +323,14 @@ save.pp.plot <- function(data, sim, name, main, lim = c(0.001, 0.999)) {
     dev.off()
 }
 
-presLevel <- 300
+presLevel <- 10
 
 model_types <- c("gauss_indep", "gauss_cor", "nig_indep", "nig_cor")
 
-setwd("Results/300/QQ_plots/")
+setwd("Results/10/QQ_plots/")
 
 process_grid_model <- function(grid_id, model_type) {
-    file_path <- paste0("Results/300/", model_type, "/", model_type, "_", grid_id, "_new.RData")
+    file_path <- paste0("Results/10/", model_type, "/", model_type, "_", grid_id, "_new.RData")
     # Check if already done
     if (file.exists(paste0("Grid", grid_id, "_", model_type, "_results.RData"))) {
         cat("QQ for Grid", grid_id, "and model", model_type, "already done Skipping...\n")

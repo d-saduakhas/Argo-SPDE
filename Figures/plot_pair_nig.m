@@ -21,7 +21,7 @@ function plot_pair_nig(presLevel,i_order,model,model_title,outputDir,paramPrefix
 %
 %   Output:
 %   A PNG figure is saved to outputDir/presLevel/ named after the pressure level
-%   and parameter prefix (e.g., '300_mu_combined.png'). The figure includes:
+%   and parameter prefix (e.g., '10_mu_combined.png'). The figure includes:
 %   * Row 1: Panels for parameter 1 (e.g., Mu1) for both specified models,
 %              plus a difference map (correlated - independent).
 %   * Row 2: Panels for parameter 2 (e.g., Mu2) for both specified models,
@@ -35,20 +35,21 @@ function plot_pair_nig(presLevel,i_order,model,model_title,outputDir,paramPrefix
 %     `redblue()` utility to be available on the MATLAB path.
 %   * Relies on helper functions: `makeGridParam`, `drawWorld`, and `addCoast`.
 %     These helpers are typically placed in a common 'helpers' directory.
-%   * Data files: Reads 'main_results.csv' from `~/Documents/Results/<presLevel>/`
+%   * Data files: Reads 'final_main_results_<presLevel>.csv' from `~/Documents/Results/<presLevel>/`
 %     and 'grid_equal.mat' from `~/Documents/Results/Data/`.
 %--------------------------------------------------------------------%
 addpath('~/Documents/Results/colorBrewer/');
 lat = linspace(-90,90,181); lon = linspace(20,380,361);
 [latGrid,lonGrid] = meshgrid(lat,lon);
 fs  = 16;
-cmapMod  = brewermap([],'YlOrBr');
-cmapDiff = redblue(17); cmapDiff(9,:) = 1;
+cmapMod  =  brewermap(256,'PuOr');  %brewermap([],'YlOrBr');         % keep your model colormap
+%cmapDiff = redblue(17); cmapDiff(9,:) = 1;
+cmapDiff = flipud(brewermap(256, 'RdBu'));
 
 %--------------------------------------------------------------------%
 % 1. LOAD DATA -------------------------------------------------------%
 %--------------------------------------------------------------------%
-fn = sprintf('~/Documents/Results/%d/main_results.csv',presLevel);
+fn = sprintf('~/Documents/Results/%d/main_results_final.csv',presLevel);
 if ~isfile(fn), error('File not found: %s',fn); end
 T = readtable(fn);
 load('~/Documents/Results/Data/grid_equal.mat','Grid');
@@ -63,17 +64,40 @@ end
 Diff{1} = G{1,2} - G{1,1}; Diff{2} = G{2,2} - G{2,1};
 
 %--------------------------------------------------------------------%
-% 2. COLOUR LIMITS ---------------------------------------------------%
+% 2. COLOUR LIMITS (diverging, zero-centred) ------------------------%
 %--------------------------------------------------------------------%
-allMod = [G{1,1}(:);G{1,2}(:);G{2,1}(:);G{2,2}(:)]; allMod = allMod(~isnan(allMod));
-cLimMod = quantile(allMod,[.025 .975]);
+allMod = [G{1,1}(:);G{1,2}(:);G{2,1}(:);G{2,2}(:)];
+allMod = allMod(~isnan(allMod));
+cLimMod = quantile(allMod,[.05 .95]);
 if diff(cLimMod)==0, cLimMod=[min(allMod) max(allMod)]; end
 if diff(cLimMod)==0, cLimMod=[0 1]; end
-allDiff=[Diff{1}(:);Diff{2}(:)]; allDiff = allDiff(~isnan(allDiff));
-dMax = quantile(abs(allDiff),0.95);
+
+% --- Adaptive diverging colormap centred at 0 ---
+mid_idx = ceil(size(cmapMod,1)/2);
+if cLimMod(1) >= 0
+    cLimMod = [0, cLimMod(2)];
+    cmapMod = flipud(cmapMod(1:mid_idx, :));   % orange→white flipped to white→orange
+    fprintf('%s: all-positive data → white→orange [0, %.4f]\n', paramPrefix, cLimMod(2));
+elseif cLimMod(2) <= 0
+    cLimMod = [cLimMod(1), 0];
+    cmapMod = cmapMod(mid_idx:end, :);          % white→purple
+    fprintf('%s: all-negative data → purple→white [%.4f, 0]\n', paramPrefix, cLimMod(1));
+else
+    absMax = max(abs(cLimMod));
+    if absMax == 0, absMax = 1; end
+    cLimMod = [-absMax, absMax];
+    % full map: purple → white → orange (no change needed)
+    fprintf('%s: mixed data → symmetric [%.4f, %.4f]\n', paramPrefix, cLimMod(1), cLimMod(2));
+end
+
+% Difference limits (always symmetric around 0)
+allDiff = [Diff{1}(:);Diff{2}(:)]; allDiff = allDiff(~isnan(allDiff));
+diff_lims = quantile(allDiff, [0.05 0.95]);
+dMax = max(abs(diff_lims));
 if isnan(dMax)||dMax==0, dMax = max(abs(allDiff)); end
 if dMax==0||isnan(dMax), dMax=1; end
 cLimDiff = [-dMax dMax];
+fprintf('Diff limits: [%.4f, %.4f]\n', cLimDiff(1), cLimDiff(2));
 
 %--------------------------------------------------------------------%
 % 3. FIGURE LAYOUT ---------------------------------------------------%

@@ -7,13 +7,13 @@
 % - `plot_pair_nig` (Mu and Nu pairs)
 % Figures are saved in `Figures/<pressureLevel>/`.
 %
-% **Dependencies**: Plotting functions, `colorBrewer`, `redblue()`, data files.
+% **Dependencies**: Plotting functions, `colorBrewer`, data files.
 %
 clear
 close all
 addpath('~/colorBrewer/');
 
-pressureLevels = [10, 300, 1000];
+pressureLevels = [10, 1000];
 models = ["gauss_indep", "gauss_cor","nig_indep", "nig_cor"];
 modelTitles = {'Gaussian (IID Nugget)', ...
     'Gaussian (Corr. Nugget)', ...

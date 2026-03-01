@@ -17,7 +17,7 @@ function plot_rho_epsilon(presLevel, i_order, model, model_title, outputDir)
 %
 %   Output:
 %   A PNG figure is saved to outputDir/presLevel/ named after the pressure level
-%   (e.g., '300_rho_epsilon.png'). The figure includes:
+%   (e.g., '10_rho_epsilon.png'). The figure includes:
 %   * Two panels showing the 'rho_epsilon' parameter for the two selected models.
 %   * A single common colorbar for 'rho_epsilon' values.
 %
@@ -27,7 +27,7 @@ function plot_rho_epsilon(presLevel, i_order, model, model_title, outputDir)
 %   * Relies on helper functions: `get_parameter_grid` (which should be renamed
 %     to `makeGridParam` for consistency), `drawWorld`, `addCoast`, and
 %     `latexLabel` (which are typically placed in a common 'helpers' directory).
-%   * Data files: Reads 'main_results.csv' from `~/Documents/Results/<presLevel>/`
+%   * Data files: Reads 'final_main_results_<presLevel>.csv' from `~/Documents/Results/<presLevel>/`
 %     and 'grid_equal.mat' from `~/Documents/Results/Data/`.
 %--------------------------------------------------------------------------%
 % 0. SETTINGS
@@ -37,12 +37,12 @@ lat  = linspace(-90,  90,181);
 lon  = linspace( 20, 380,361);
 [latGrid,lonGrid] = meshgrid(lat,lon);
 fs   = 16;                                   % base font size
-cmapMod  = brewermap([],'YlOrBr');           % Colormap for model panels
-
+base_cmap  = flipud(brewermap(256,'PuOr'));           % 4 model panels
+mid_idx = 129; % Center point (White)
 %======================================================================%
 % 1. LOAD THE TWO MODEL GRIDS & GET LIMITS
 %======================================================================%
-fn = ['~/Documents/Results/' num2str(presLevel) '/main_results.csv'];
+fn = ['~/Documents/Results/' num2str(presLevel) '/final_main_results_' num2str(presLevel) '.csv'];
 if ~isfile(fn), error('File not found: %s',fn); end
 T  = readtable(fn);
 load('~/Documents/Results/Data/grid_equal.mat','Grid');   % 404 boxes
@@ -60,7 +60,7 @@ all_vals_combined = all_vals_combined(~isnan(all_vals_combined));
 if isempty(all_vals_combined)
     cLimMod = [0 1]; % Default fallback
 else
-    cLimMod = quantile(all_vals_combined, [0.01, 0.99]); % Using general quantile for rho_e
+    cLimMod = quantile(all_vals_combined, [0.1, 0.9]); % Using general quantile for rho_e
 end
 
 % Ensure cLimMod is not empty or singular
@@ -76,6 +76,24 @@ if isempty(cLimMod) || cLimMod(1) == cLimMod(2), cLimMod = [0 1]; end % Final fa
 
 
 fprintf('Global Climits for rho_epsilon: [%.4f, %.4f]\n', cLimMod(1), cLimMod(2));
+
+% --- FORCING WHITE = 0 ---
+if cLimMod(1) >= 0
+    % Case: All Positive. White stays at 0.
+    cmapMod = base_cmap(mid_idx:end, :); 
+    cLimMod = [0, cLimMod(2)]; 
+elseif cLimMod(2) <= 0
+    % Case: All Negative. White stays at 0.
+    cmapMod = base_cmap(1:mid_idx-1, :); 
+    cLimMod = [cLimMod(1), 0];
+else
+    % Case: Mixed (Like your current plot). 
+    % We must make limits symmetric to keep White at exactly 0.
+    abs_max = max(abs(cLimMod));
+    cLimMod = [-abs_max, abs_max]; 
+    cmapMod = base_cmap; 
+end
+fprintf('Adjusted Climits (White=0): [%.4f, %.4f]\n', cLimMod(1), cLimMod(2));
 
 %======================================================================%
 % 2. PLOT 1 × 2 GRID (Manual 'axes' Positioning)
@@ -166,6 +184,6 @@ clim(ax(2), cLimMod);
 outDir = fullfile(outputDir,num2str(presLevel));
 if ~exist(outDir,'dir'), mkdir(outDir); end
 fname = fullfile(outDir,sprintf('%d_rho_epsilon.png',presLevel));
-print(fig,'-dpng','-r330',fname);
-fprintf('Figure saved to %s\n',fname);
+exportgraphics(fig, fname, 'Resolution', 300); 
+fprintf('Figure saved to %s (via exportgraphics)\n', fname);
 end
