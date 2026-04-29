@@ -1,0 +1,53 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the accompanying paper below."
+title: "Argo-SPDE: Multivariate Spatial Models with Correlated Nugget Effects for Argo Ocean Data"
+abstract: "Code and data accompanying the paper 'Incorporating Correlated Nugget Effects in Multivariate Spatial Models: An Application to Argo Ocean Data'. Includes model implementation, simulations, and data processing."
+type: software
+authors:
+  - family-names: Saduakhas
+    given-names: Damilya
+    orcid: "https://orcid.org/0000-0003-2276-9622"
+    affiliation: "King Abdullah University of Science and Technology (KAUST)"
+  - family-names: Bolin
+    given-names: David
+    affiliation: "King Abdullah University of Science and Technology (KAUST)"
+  - family-names: Jin
+    given-names: Xiaotian
+    affiliation: "King Abdullah University of Science and Technology (KAUST)"
+  - family-names: Simas
+    given-names: "Alexandre B."
+    affiliation: "King Abdullah University of Science and Technology (KAUST)"
+  - family-names: Wallin
+    given-names: Jonas
+    affiliation: "Lund University"
+version: 1.0.0
+date-released: 2026-04-29
+license: MIT
+repository-code: "https://github.com/d-saduakhas/Argo-SPDE"
+keywords:
+  - SPDE approach
+  - multivariate spatial models
+  - correlated nugget effect
+  - Argo ocean data
+  - geostatistical model
+  - Whittle-Matérn fields
+preferred-citation:
+  type: article
+  title: "Incorporating Correlated Nugget Effects in Multivariate Spatial Models: An Application to Argo Ocean Data"
+  authors:
+    - family-names: Saduakhas
+      given-names: Damilya
+    - family-names: Bolin
+      given-names: David
+    - family-names: Jin
+      given-names: Xiaotian
+    - family-names: Simas
+      given-names: "Alexandre B."
+    - family-names: Wallin
+      given-names: Jonas
+  year: 2025
+  month: 6
+  url: "https://arxiv.org/abs/2506.03042"
+  identifiers:
+    - type: other
+      value: "arXiv:2506.03042"
